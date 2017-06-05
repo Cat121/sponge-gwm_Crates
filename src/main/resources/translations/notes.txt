@@ -1,0 +1,3 @@
+If you want create translation or improve one of the translations
+than feel free to Pull Request it, or send me Private Message with details.
+I myself created only default English (which is most likely not very accurate) and Russian translations.
