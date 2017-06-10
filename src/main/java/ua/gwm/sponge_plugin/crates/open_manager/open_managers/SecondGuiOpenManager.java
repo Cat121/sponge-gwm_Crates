@@ -4,10 +4,14 @@ import ninja.leaping.configurate.ConfigurationNode;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.item.inventory.Container;
 import org.spongepowered.api.item.inventory.Inventory;
+import org.spongepowered.api.item.inventory.InventoryArchetypes;
 import org.spongepowered.api.item.inventory.ItemStack;
 import org.spongepowered.api.item.inventory.property.InventoryDimension;
+import org.spongepowered.api.item.inventory.property.InventoryTitle;
 import org.spongepowered.api.item.inventory.property.SlotIndex;
 import org.spongepowered.api.item.inventory.type.OrderedInventory;
+import org.spongepowered.api.text.Text;
+import org.spongepowered.api.text.serializer.TextSerializers;
 import ua.gwm.sponge_plugin.crates.GWMCrates;
 import ua.gwm.sponge_plugin.crates.manager.Manager;
 import ua.gwm.sponge_plugin.crates.open_manager.OpenManager;
@@ -15,11 +19,13 @@ import ua.gwm.sponge_plugin.crates.util.GWMCratesUtils;
 import ua.gwm.sponge_plugin.crates.util.Pair;
 
 import java.util.HashMap;
+import java.util.Optional;
 
 public class SecondGuiOpenManager extends OpenManager {
 
     public static final HashMap<Container, Pair<SecondGuiOpenManager, Manager>> SECOND_GUI_INVENTORIES = new HashMap<Container, Pair<SecondGuiOpenManager, Manager>>();
 
+    private Optional<Text> display_name = Optional.empty();
     private ItemStack hidden_item;
     private boolean increase_hidden_item_quantity;
     private int rows;
@@ -30,6 +36,7 @@ public class SecondGuiOpenManager extends OpenManager {
 
     public SecondGuiOpenManager(ConfigurationNode node) {
         super(node);
+        ConfigurationNode display_name_node = node.getNode("DISPLAY_NAME");
         ConfigurationNode hidden_item_node = node.getNode("HIDDEN_ITEM");
         ConfigurationNode increase_hidden_item_quantity_node = node.getNode("INCREASE_HIDDEN_ITEM_QUANTITY");
         ConfigurationNode rows_node = node.getNode("ROWS");
@@ -38,6 +45,9 @@ public class SecondGuiOpenManager extends OpenManager {
         ConfigurationNode forbid_close_node = node.getNode("FORBID_CLOSE");
         ConfigurationNode give_random_on_close_node = node.getNode("GIVE_RANDOM_ON_CLOSE");
         try {
+            if (!display_name_node.isVirtual()) {
+                display_name = Optional.of(TextSerializers.FORMATTING_CODE.deserialize(display_name_node.getString()));
+            }
             if (hidden_item_node.isVirtual()) {
                 throw new RuntimeException("HIDDEN_ITEM node does not exist!");
             }
@@ -53,14 +63,15 @@ public class SecondGuiOpenManager extends OpenManager {
             forbid_close = forbid_close_node.getBoolean(true);
             give_random_on_close = give_random_on_close_node.getBoolean(true);
         } catch (Exception e) {
-            throw new RuntimeException("Exception creating SECOND GUI OPEN MANAGER!", e);
+            throw new RuntimeException("Exception creating Second Gui Open Manager!", e);
         }
     }
 
-    public SecondGuiOpenManager(ItemStack hidden_item, boolean increase_hidden_item_quantity, int rows,
-                                boolean show_other_items, int close_delay, boolean forbid_close,
+    public SecondGuiOpenManager(Optional<Text> display_name, ItemStack hidden_item, boolean increase_hidden_item_quantity,
+                                int rows, boolean show_other_items, int close_delay, boolean forbid_close,
                                 boolean give_random_on_close) {
         super();
+        this.display_name = display_name;
         this.hidden_item = hidden_item;
         this.increase_hidden_item_quantity = increase_hidden_item_quantity;
         if (rows < 1 || rows > 6) {
@@ -76,9 +87,12 @@ public class SecondGuiOpenManager extends OpenManager {
 
     @Override
     public void open(Player player, Manager manager) {
-        Inventory inventory = Inventory.builder().
+        Inventory inventory = display_name.map(text -> Inventory.builder().of(InventoryArchetypes.CHEST).
                 property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9, rows)).
-                build(GWMCrates.getInstance());
+                property(InventoryTitle.PROPERTY_NAME, new InventoryTitle(text)).
+                build(GWMCrates.getInstance())).orElseGet(() -> Inventory.builder().of(InventoryArchetypes.CHEST).
+                property(InventoryDimension.PROPERTY_NAME, new InventoryDimension(9, rows)).
+                build(GWMCrates.getInstance()));
         OrderedInventory ordered = inventory.query(OrderedInventory.class);
         int hidden_item_quantity = hidden_item.getQuantity();
         for (int i = 0; i < 9 * rows; i++) {

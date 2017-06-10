@@ -15,6 +15,7 @@ import ua.gwm.sponge_plugin.crates.GWMCrates;
 import ua.gwm.sponge_plugin.crates.drop.Drop;
 import ua.gwm.sponge_plugin.crates.manager.Manager;
 import ua.gwm.sponge_plugin.crates.open_manager.open_managers.SecondGuiOpenManager;
+import ua.gwm.sponge_plugin.crates.util.GWMCratesUtils;
 import ua.gwm.sponge_plugin.crates.util.LanguageUtils;
 import ua.gwm.sponge_plugin.crates.util.Pair;
 
@@ -22,9 +23,9 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
 
-public class SecondGuiClickListener {
+public class SecondGuiOpenManagerListener {
 
-    private HashSet<Container> SHOWN_GUI = new HashSet<Container>();
+    public static final HashSet<Container> SHOWN_GUI = new HashSet<Container>();
 
     @Listener
     public void controlClick(ClickInventoryEvent event) {
@@ -44,7 +45,7 @@ public class SecondGuiClickListener {
             Manager manager = pair.getValue();
             for (SlotTransaction transaction : event.getTransactions()) {
                 Slot slot = transaction.getSlot();
-                if (isFirstInventory(container, slot)) {
+                if (GWMCratesUtils.isFirstInventory(container, slot)) {
                     SHOWN_GUI.add(container);
                     Drop drop = manager.getRandomDrop();
                     ItemStack drop_item = drop.getDropItem().copy();
@@ -72,12 +73,6 @@ public class SecondGuiClickListener {
                 }
             }
         }
-    }
-
-    private boolean isFirstInventory(Container container, Slot slot) {
-        int upperSize = container.iterator().next().capacity();
-        Integer affectedSlot = slot.getProperty(SlotIndex.class, "slotindex").map(SlotIndex::getValue).orElse(-1);
-        return affectedSlot != -1 && affectedSlot < upperSize;
     }
 
     @Listener

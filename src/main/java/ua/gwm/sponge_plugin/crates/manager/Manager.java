@@ -6,6 +6,7 @@ import ua.gwm.sponge_plugin.crates.caze.Case;
 import ua.gwm.sponge_plugin.crates.drop.Drop;
 import ua.gwm.sponge_plugin.crates.key.Key;
 import ua.gwm.sponge_plugin.crates.open_manager.OpenManager;
+import ua.gwm.sponge_plugin.crates.preview.Preview;
 import ua.gwm.sponge_plugin.crates.util.GWMCratesUtils;
 
 import java.lang.reflect.Constructor;
@@ -18,7 +19,8 @@ public class Manager {
     private Case caze;
     private Key key;
     private OpenManager open_manager;
-    private Set<Drop> drops;
+    private List<Drop> drops;
+    private Optional<Preview> preview = Optional.empty();
 
     public Manager(ConfigurationNode node) {
         ConfigurationNode id_node = node.getNode("ID");
@@ -27,6 +29,7 @@ public class Manager {
         ConfigurationNode key_node = node.getNode("KEY");
         ConfigurationNode open_manager_node = node.getNode("OPEN_MANAGER");
         ConfigurationNode drops_node = node.getNode("DROPS");
+        ConfigurationNode preview_node = node.getNode("PREVIEW");
         if (id_node.isVirtual()) {
             throw new RuntimeException("ID node does not exist!");
         }
@@ -50,7 +53,7 @@ public class Manager {
         //Loading case
         ConfigurationNode case_type_node = case_node.getNode("TYPE");
         if (case_type_node.isVirtual()) {
-            throw new RuntimeException("TYPE node for CASE does not exist!");
+            throw new RuntimeException("TYPE node for Case does not exist!");
         }
         String case_type = case_type_node.getString();
         if (!GWMCrates.getInstance().getCases().containsKey(case_type)) {
@@ -61,12 +64,12 @@ public class Manager {
             Constructor<? extends Case> case_constructor = case_class.getConstructor(ConfigurationNode.class);
             caze = case_constructor.newInstance(case_node);
         } catch (Exception e) {
-            throw new RuntimeException("Exception creating case!", e);
+            throw new RuntimeException("Exception creating Case!", e);
         }
         //Loading key
         ConfigurationNode key_type_node = key_node.getNode("TYPE");
         if (key_type_node.isVirtual()) {
-            throw new RuntimeException("TYPE node for KEY does not exist!");
+            throw new RuntimeException("TYPE node for Key does not exist!");
         }
         String key_type = key_type_node.getString();
         if (!GWMCrates.getInstance().getKeys().containsKey(key_type)) {
@@ -77,12 +80,12 @@ public class Manager {
             Constructor<? extends Key> key_constructor = key_class.getConstructor(ConfigurationNode.class);
             key = key_constructor.newInstance(key_node);
         } catch (Exception e) {
-            throw new RuntimeException("Exception creating key!", e);
+            throw new RuntimeException("Exception creating Key!", e);
         }
         //Loading open manager
         ConfigurationNode open_manager_type_node = open_manager_node.getNode("TYPE");
         if (open_manager_type_node.isVirtual()) {
-            throw new RuntimeException("TYPE node for OPEN MANAGER does not exist!");
+            throw new RuntimeException("TYPE node for Open Manager does not exist!");
         }
         String open_manager_type = open_manager_type_node.getString();
         if (!GWMCrates.getInstance().getOpenManagers().containsKey(open_manager_type)) {
@@ -93,14 +96,14 @@ public class Manager {
             Constructor<? extends OpenManager> open_manager_constructor = open_manager_class.getConstructor(ConfigurationNode.class);
             open_manager = open_manager_constructor.newInstance(open_manager_node);
         } catch (Exception e) {
-            throw new RuntimeException("Exception creating open manager!", e);
+            throw new RuntimeException("Exception creating Open Manager!", e);
         }
-        //Loading drop
-        drops = new HashSet<Drop>();
+        //Loading drops
+        drops = new ArrayList<Drop>();
         for (ConfigurationNode drop_node : drops_node.getChildrenList()) {
             ConfigurationNode drop_type_node = drop_node.getNode("TYPE");
             if (drop_type_node.isVirtual()) {
-                throw new RuntimeException("TYPE node for drop does not exist!");
+                throw new RuntimeException("TYPE node for Drop does not exist!");
             }
             String drop_type = drop_type_node.getString();
             if (!GWMCrates.getInstance().getDrops().containsKey(drop_type)) {
@@ -111,12 +114,30 @@ public class Manager {
                 Constructor<? extends Drop> drop_constructor = drop_class.getConstructor(ConfigurationNode.class);
                 drops.add(drop_constructor.newInstance(drop_node));
             } catch (Exception e) {
-                throw new RuntimeException("Exception creating drop!", e);
+                throw new RuntimeException("Exception creating Drop!", e);
+            }
+        }
+        //Loading preview
+        if (!preview_node.isVirtual()) {
+            ConfigurationNode preview_type_node = preview_node.getNode("TYPE");
+            if (preview_type_node.isVirtual()) {
+                throw new RuntimeException("TYPE node for Preview does not exist!");
+            }
+            String preview_type = preview_type_node.getString();
+            if (!GWMCrates.getInstance().getPreviews().containsKey(preview_type)) {
+                throw new RuntimeException("Preview type \"" + preview_type + "\" not found!");
+            }
+            try {
+                Class<? extends Preview> preview_class = GWMCrates.getInstance().getPreviews().get(preview_type);
+                Constructor<? extends Preview> preview_constructor = preview_class.getConstructor(ConfigurationNode.class);
+                preview = Optional.of(preview_constructor.newInstance(preview_node));
+            } catch (Exception e) {
+                throw new RuntimeException("Exception creating Preview!", e);
             }
         }
     }
 
-    public Manager(String id, String name, Case caze, Key key, Set<Drop> drops, OpenManager open_manager) {
+    public Manager(String id, String name, Case caze, Key key, List<Drop> drops, OpenManager open_manager) {
         this.id = id;
         this.name = name;
         this.caze = caze;
@@ -193,11 +214,11 @@ public class Manager {
         this.key = key;
     }
 
-    public Set<Drop> getDrop() {
+    public List<Drop> getDrop() {
         return drops;
     }
 
-    public void setDrop(Set<Drop> drops) {
+    public void setDrop(List<Drop> drops) {
         this.drops = drops;
     }
 
@@ -207,5 +228,13 @@ public class Manager {
 
     public void setOpenManager(OpenManager open_manager) {
         this.open_manager = open_manager;
+    }
+
+    public Optional<Preview> getPreview() {
+        return preview;
+    }
+
+    public void setPreview(Optional<Preview> preview) {
+        this.preview = preview;
     }
 }

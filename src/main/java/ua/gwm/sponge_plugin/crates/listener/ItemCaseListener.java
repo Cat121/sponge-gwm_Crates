@@ -19,7 +19,7 @@ import java.util.Optional;
 public class ItemCaseListener {
 
     @Listener(order = Order.LATE)
-    public void openCase(InteractItemEvent.Secondary event) {
+    public void openItemCase(InteractItemEvent.Secondary event) {
         Optional<Player> optional_player = event.getCause().first(Player.class);
         if (!optional_player.isPresent()) return;
         Player player = optional_player.get();

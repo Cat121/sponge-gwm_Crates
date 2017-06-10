@@ -11,6 +11,7 @@ import org.spongepowered.api.config.ConfigDir;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.cause.Cause;
 import org.spongepowered.api.event.cause.NamedCause;
+import org.spongepowered.api.event.game.GameReloadEvent;
 import org.spongepowered.api.event.game.state.GameConstructionEvent;
 import org.spongepowered.api.event.game.state.GameInitializationEvent;
 import org.spongepowered.api.event.game.state.GamePreInitializationEvent;
@@ -31,15 +32,15 @@ import ua.gwm.sponge_plugin.crates.key.keys.EmptyKey;
 import ua.gwm.sponge_plugin.crates.key.keys.ItemKey;
 import ua.gwm.sponge_plugin.crates.key.keys.TimedKey;
 import ua.gwm.sponge_plugin.crates.key.keys.VirtualKey;
-import ua.gwm.sponge_plugin.crates.listener.BlockCaseListener;
-import ua.gwm.sponge_plugin.crates.listener.FirstGuiClickListener;
-import ua.gwm.sponge_plugin.crates.listener.ItemCaseListener;
-import ua.gwm.sponge_plugin.crates.listener.SecondGuiClickListener;
+import ua.gwm.sponge_plugin.crates.listener.*;
 import ua.gwm.sponge_plugin.crates.manager.Manager;
 import ua.gwm.sponge_plugin.crates.open_manager.OpenManager;
 import ua.gwm.sponge_plugin.crates.open_manager.open_managers.FirstGuiOpenManager;
 import ua.gwm.sponge_plugin.crates.open_manager.open_managers.NoGuiOpenManager;
 import ua.gwm.sponge_plugin.crates.open_manager.open_managers.SecondGuiOpenManager;
+import ua.gwm.sponge_plugin.crates.preview.Preview;
+import ua.gwm.sponge_plugin.crates.preview.previews.FirstGuiPreview;
+import ua.gwm.sponge_plugin.crates.preview.previews.SecondGuiPreview;
 import ua.gwm.sponge_plugin.crates.util.Config;
 
 import java.io.File;
@@ -51,7 +52,7 @@ import java.util.Optional;
 @Plugin(
         id = "gwm_crates",
         name = "GWMCrates",
-        version = "1.0",
+        version = "1.1",
         description = "Universal crates plugin for your server!",
         authors = {"GWM"/*My contacts: Skype(nk_gwm), Discord(GWM#2192)*/})
 public class GWMCrates {
@@ -82,6 +83,7 @@ public class GWMCrates {
     private HashMap<String, Class<? extends Key>> keys = new HashMap<String, Class<? extends Key>>();
     private HashMap<String, Class<? extends Drop>> drops = new HashMap<String, Class<? extends Drop>>();
     private HashMap<String, Class<? extends OpenManager>> open_managers = new HashMap<String, Class<? extends OpenManager>>();
+    private HashMap<String, Class<? extends Preview>> previews = new HashMap<String, Class<? extends Preview>>();
 
     private HashSet<Manager> created_managers = new HashSet<Manager>();
 
@@ -129,8 +131,9 @@ public class GWMCrates {
     public void onInitialize(GameInitializationEvent event) {
         Sponge.getEventManager().registerListeners(this, new ItemCaseListener());
         Sponge.getEventManager().registerListeners(this, new BlockCaseListener());
-        Sponge.getEventManager().registerListeners(this, new FirstGuiClickListener());
-        Sponge.getEventManager().registerListeners(this, new SecondGuiClickListener());
+        Sponge.getEventManager().registerListeners(this, new FirstGuiOpenManagerListener());
+        Sponge.getEventManager().registerListeners(this, new SecondGuiOpenManagerListener());
+        Sponge.getEventManager().registerListeners(this, new PreviewListener());
         Sponge.getCommandManager().register(this, new GWMCratesCommand(), "gwmcrates", "crates");
         register();
         logger.info("Initialization complete!");
@@ -142,16 +145,42 @@ public class GWMCrates {
         loadEconomy();
     }
 
-    public Optional<Manager> getManagerById(String manager_id) {
-        for (Manager manager : created_managers) {
-            if (manager.getId().equalsIgnoreCase(manager_id)) {
-                return Optional.of(manager);
-            }
-        }
-        return Optional.empty();
+    @Listener
+    public void reloadListener(GameReloadEvent event) {
+        reload();
     }
 
-    public void register() {
+    public void save() {
+        config.save();
+        language_config.save();
+        virtual_cases_config.save();
+        virtual_keys_config.save();
+        timed_cases_cooldowns_config.save();
+        timed_keys_cooldowns_config.save();
+        logger.info("All plugin configs has been reloaded!");
+    }
+
+    public void reload() {
+        config.reload();
+        language_config.reload();
+        virtual_cases_config.reload();
+        virtual_keys_config.reload();
+        timed_cases_cooldowns_config.reload();
+        timed_keys_cooldowns_config.reload();
+        cases.clear();
+        keys.clear();
+        open_managers.clear();
+        drops.clear();
+        previews.clear();
+        register();
+        created_managers.clear();
+        createManagers();
+        optional_economy_service = Optional.empty();
+        loadEconomy();
+        logger.info("Plugin has been reloaded.");
+    }
+
+    private void register() {
         GWMCratesRegistrationEvent registration_event = new GWMCratesRegistrationEvent();
         registration_event.getCases().put("ITEM", ItemCase.class);
         registration_event.getCases().put("BLOCK", BlockCase.class);
@@ -168,6 +197,8 @@ public class GWMCrates {
         registration_event.getOpenManagers().put("NO-GUI", NoGuiOpenManager.class);
         registration_event.getOpenManagers().put("FIRST", FirstGuiOpenManager.class);
         registration_event.getOpenManagers().put("SECOND", SecondGuiOpenManager.class);
+        registration_event.getPreviews().put("FIRST", FirstGuiPreview.class);
+        registration_event.getPreviews().put("SECOND", SecondGuiPreview.class);
         Sponge.getEventManager().post(registration_event);
         for (Map.Entry<String, Class<? extends Case>> entry : registration_event.getCases().entrySet()) {
             String name = entry.getKey();
@@ -213,10 +244,21 @@ public class GWMCrates {
                 logger.info("Successfully added Open Manager type " + name + " (" + class_name + ".class)!");
             }
         }
+        for (Map.Entry<String, Class<? extends Preview>> entry : registration_event.getPreviews().entrySet()) {
+            String name = entry.getKey();
+            Class<? extends Preview> preview_class = entry.getValue();
+            String class_name = preview_class.getSimpleName();
+            if (previews.containsKey(name)) {
+                logger.warn("Trying to add Preview type " + name + " (" + class_name + ".class) which already exist!");
+            } else {
+                previews.put(name, preview_class);
+                logger.info("Successfully added Preview type " + name + " (" + class_name + ".class)!");
+            }
+        }
         logger.info("Registration complete!");
     }
 
-    public void createManagers() {
+    private void createManagers() {
         File[] managers_files = managers_directory.listFiles();
         if (managers_files.length == 0) {
             logger.warn("No one manager was found.");
@@ -237,14 +279,22 @@ public class GWMCrates {
         }
     }
 
-    public void loadEconomy() {
+    private void loadEconomy() {
         optional_economy_service = Sponge.getServiceManager().provide(EconomyService.class);
         if (optional_economy_service.isPresent()) {
             logger.info("Economy Service found!");
         } else {
             logger.info("Economy Service does not found!");
         }
-        logger.info("Starting complete!");
+    }
+
+    public Optional<Manager> getManagerById(String manager_id) {
+        for (Manager manager : created_managers) {
+            if (manager.getId().equalsIgnoreCase(manager_id)) {
+                return Optional.of(manager);
+            }
+        }
+        return Optional.empty();
     }
 
     public Cause getDefaultCause() {
@@ -281,6 +331,10 @@ public class GWMCrates {
 
     public HashMap<String, Class<? extends OpenManager>> getOpenManagers() {
         return open_managers;
+    }
+
+    public HashMap<String, Class<? extends Preview>> getPreviews() {
+        return previews;
     }
 
     public HashSet<Manager> getCreatedManagers() {

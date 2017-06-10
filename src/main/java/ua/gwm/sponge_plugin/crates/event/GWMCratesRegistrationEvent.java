@@ -7,6 +7,7 @@ import ua.gwm.sponge_plugin.crates.caze.Case;
 import ua.gwm.sponge_plugin.crates.drop.Drop;
 import ua.gwm.sponge_plugin.crates.key.Key;
 import ua.gwm.sponge_plugin.crates.open_manager.OpenManager;
+import ua.gwm.sponge_plugin.crates.preview.Preview;
 
 import java.util.HashMap;
 
@@ -16,6 +17,7 @@ public class GWMCratesRegistrationEvent implements Event {
     private HashMap<String, Class<? extends Key>> keys = new HashMap<String, Class<? extends Key>>();
     private HashMap<String, Class<? extends Drop>> drops = new HashMap<String, Class<? extends Drop>>();
     private HashMap<String, Class<? extends OpenManager>> open_managers = new HashMap<String, Class<? extends OpenManager>>();
+    private HashMap<String, Class<? extends Preview>> previews = new HashMap<String, Class<? extends Preview>>();
 
     @Override
     public Cause getCause() {
@@ -36,5 +38,9 @@ public class GWMCratesRegistrationEvent implements Event {
 
     public HashMap<String, Class<? extends OpenManager>> getOpenManagers() {
         return open_managers;
+    }
+
+    public HashMap<String, Class<? extends Preview>> getPreviews() {
+        return previews;
     }
 }

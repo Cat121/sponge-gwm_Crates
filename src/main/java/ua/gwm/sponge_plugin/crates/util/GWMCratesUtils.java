@@ -3,13 +3,13 @@ package ua.gwm.sponge_plugin.crates.util;
 import com.google.common.reflect.TypeToken;
 import ninja.leaping.configurate.ConfigurationNode;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.data.DataContainer;
-import org.spongepowered.api.data.DataQuery;
 import org.spongepowered.api.data.key.Keys;
 import org.spongepowered.api.data.meta.ItemEnchantment;
 import org.spongepowered.api.item.Enchantment;
-import org.spongepowered.api.item.ItemType;
+import org.spongepowered.api.item.inventory.Container;
 import org.spongepowered.api.item.inventory.ItemStack;
+import org.spongepowered.api.item.inventory.Slot;
+import org.spongepowered.api.item.inventory.property.SlotIndex;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.serializer.TextSerializers;
 import org.spongepowered.api.world.Location;
@@ -81,12 +81,14 @@ public class GWMCratesUtils {
             if (item_type_node.isVirtual()) {
                 throw new RuntimeException("ITEM_TYPE node does not exist!");
             }
-            ItemStack item = ItemStack.of(item_type_node.getValue(TypeToken.of(ItemType.class)), quantity_node.getInt(1));
-            if (!sub_id_node.isVirtual()) {
-                DataContainer container = item.toContainer();
-                container.set(DataQuery.of("UnsafeDamage"), sub_id_node.getInt(0));
-                item.setRawData(container);
-            }
+            //Mega-shit-code start
+            ConfigurationNode temp_node = node.getNode("TEMP_SPONGE_ITEM_STACK_NODE");
+            temp_node.getNode("ItemType").setValue(item_type_node.getString());
+            temp_node.getNode("UnsafeDamage").setValue(sub_id_node.getInt(0));
+            temp_node.getNode("Count").setValue(quantity_node.getInt(1));
+            ItemStack item = temp_node.getValue(TypeToken.of(ItemStack.class));
+            temp_node.setValue(null);
+            //Mega-shit-code end
             if (!durability_node.isVirtual()) {
                 int durability = durability_node.getInt();
                 item.offer(Keys.ITEM_DURABILITY, durability);
@@ -138,5 +140,22 @@ public class GWMCratesUtils {
         String cmd = cmd_node.getString();
         boolean console = console_node.getBoolean(true);
         return new CommandDrop.Command(cmd, console);
+    }
+
+    public static boolean isFirstInventory(Container container, Slot slot) {
+        int upperSize = container.iterator().next().capacity();
+        Integer affectedSlot = slot.getProperty(SlotIndex.class, "slotindex").map(SlotIndex::getValue).orElse(-1);
+        return affectedSlot != -1 && affectedSlot < upperSize;
+    }
+
+    public static int getInventoryHeight(int size) {
+        int height = (int) Math.ceil((size)/9.);
+        if (height < 1) {
+            return 1;
+        }
+        if (height > 6) {
+            return 6;
+        }
+        return height;
     }
 }

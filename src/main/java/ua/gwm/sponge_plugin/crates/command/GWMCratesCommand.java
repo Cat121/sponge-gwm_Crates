@@ -18,6 +18,7 @@ import ua.gwm.sponge_plugin.crates.drop.Drop;
 import ua.gwm.sponge_plugin.crates.key.Key;
 import ua.gwm.sponge_plugin.crates.manager.Manager;
 import ua.gwm.sponge_plugin.crates.open_manager.OpenManager;
+import ua.gwm.sponge_plugin.crates.preview.Preview;
 import ua.gwm.sponge_plugin.crates.util.LanguageUtils;
 import ua.gwm.sponge_plugin.crates.util.Pair;
 
@@ -38,19 +39,21 @@ public class GWMCratesCommand implements CommandCallable {
             return CommandResult.empty();
         }
         switch (args[0].toLowerCase()) {
+            case "save": {
+                if (!source.hasPermission("gwm_crates.command.save")) {
+                    source.sendMessage(LanguageUtils.getText("HAVE_NOT_PERMISSION"));
+                    return CommandResult.success();
+                }
+                GWMCrates.getInstance().save();
+                source.sendMessage(LanguageUtils.getText("SUCCESSFULLY_SAVED"));
+                return CommandResult.success();
+            }
             case "reload": {
                 if (!source.hasPermission("gwm_crates.command.reload")) {
                     source.sendMessage(LanguageUtils.getText("HAVE_NOT_PERMISSION"));
                     return CommandResult.success();
                 }
-                GWMCrates.getInstance().getCreatedManagers().clear();
-                GWMCrates.getInstance().getCases().clear();
-                GWMCrates.getInstance().getKeys().clear();
-                GWMCrates.getInstance().getOpenManagers().clear();
-                GWMCrates.getInstance().getDrops().clear();
-                GWMCrates.getInstance().register();
-                GWMCrates.getInstance().createManagers();
-                GWMCrates.getInstance().loadEconomy();
+                GWMCrates.getInstance().reload();
                 source.sendMessage(LanguageUtils.getText("SUCCESSFULLY_RELOADED"));
                 return CommandResult.success();
             }
@@ -154,6 +157,39 @@ public class GWMCratesCommand implements CommandCallable {
                                 new Pair<String, String>("%PLAUER%", optional_player.get().getName())));
                     }
                 }
+                return CommandResult.success();
+            }
+            case "preview": {
+                if (args.length != 2) {
+                    return CommandResult.empty();
+                }
+                String manager_id = args[1].toLowerCase();
+                if (!optional_player.isPresent()) {
+                    source.sendMessage(LanguageUtils.getText("COMMAND_CAN_BE_EXECUTED_ONLY_BY_PLAYER"));
+                    return CommandResult.success();
+                }
+                Player player = optional_player.get();
+                Optional<Manager> optional_manager = GWMCrates.getInstance().getManagerById(manager_id);
+                if (!optional_manager.isPresent()) {
+                    source.sendMessage(LanguageUtils.getText("MANAGER_NOT_EXIST",
+                            new Pair<String, String>("%MANAGER_ID%", manager_id)));
+                    return CommandResult.success();
+                }
+                Manager manager = optional_manager.get();
+                Optional<Preview> optional_preview = manager.getPreview();
+                if (!optional_preview.isPresent()) {
+                    source.sendMessage(LanguageUtils.getText("PREVIEW_NOT_AVAILABLE",
+                            new Pair<String, String>("%MANAGER%", manager.getName())));
+                    return CommandResult.success();
+                }
+                Preview preview = optional_preview.get();
+                if (!player.hasPermission("gwm_crates.preview." + manager_id)) {
+                    source.sendMessage(LanguageUtils.getText("HAVE_NOT_PERMISSION"));
+                    return CommandResult.success();
+                }
+                preview.preview(player, manager);
+                player.sendMessage(LanguageUtils.getText("PREVIEW_STARTED",
+                        new Pair<String, String>("%MANAGER%", manager.getName())));
                 return CommandResult.success();
             }
             case "buy": {

@@ -20,7 +20,7 @@ import java.util.Optional;
 public class BlockCaseListener {
 
     @Listener(order = Order.LATE)
-    public void openCase(InteractBlockEvent.Secondary.MainHand event) {
+    public void openBlockCase(InteractBlockEvent.Secondary.MainHand event) {
         Optional<Player> optional_player = event.getCause().first(Player.class);
         if (!optional_player.isPresent()) return;
         Player player = optional_player.get();

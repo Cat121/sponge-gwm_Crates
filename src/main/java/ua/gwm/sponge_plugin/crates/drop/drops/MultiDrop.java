@@ -8,13 +8,11 @@ import ua.gwm.sponge_plugin.crates.drop.Drop;
 
 import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Optional;
+import java.util.*;
 
 public class MultiDrop extends Drop {
 
-    protected Collection<Drop> drops;
+    protected List<Drop> drops;
 
     public MultiDrop(ConfigurationNode node) {
         super(node);
@@ -22,7 +20,7 @@ public class MultiDrop extends Drop {
         if (drops_node.isVirtual()) {
             throw new RuntimeException("DROPS node does not exist");
         }
-        drops = new HashSet<Drop>();
+        drops = new ArrayList<Drop>();
         for (ConfigurationNode drop_node : drops_node.getChildrenList()) {
             ConfigurationNode drop_type_node = drop_node.getNode("TYPE");
             if (drop_type_node.isVirtual()) {
@@ -44,7 +42,7 @@ public class MultiDrop extends Drop {
     }
 
     public MultiDrop(String id, Optional<BigDecimal> price, Optional<ItemStack> drop_item, int level,
-                     Collection<Drop> drops) {
+                     List<Drop> drops) {
         super(id, price, drop_item, level);
         this.drops = drops;
     }
@@ -54,11 +52,11 @@ public class MultiDrop extends Drop {
         drops.forEach(drop -> drop.apply(player));
     }
 
-    public Collection<Drop> getDrops() {
+    public List<Drop> getDrops() {
         return drops;
     }
 
-    public void setDrops(Collection<Drop> drops) {
+    public void setDrops(List<Drop> drops) {
         this.drops = drops;
     }
 }
